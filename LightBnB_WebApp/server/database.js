@@ -109,19 +109,19 @@ const getAllProperties = (options, limit = 10) => {
   }
  
   if (options.owner_id) {
-    queryString+= queryParams.length === 0 ? `WHERE ` : `AND `;
+    queryString += queryParams.length === 0 ? `WHERE ` : `AND `;
     queryParams.push(`%${options.owner_id}%`);
     queryString += `properties.owner_id = $${queryParams.length} `;
   }
 
   if (options.minimum_price_per_night) {
-    queryString+= queryParams.length === 0 ? `WHERE ` : `AND `;
+    queryString += queryParams.length === 0 ? `WHERE ` : `AND `;
     queryParams.push(options.minimum_price_per_night * 100);
     queryString += `properties.cost_per_night >= $${queryParams.length} `;
   }
 
   if (options.maximum_price_per_night) {
-    queryString+= queryParams.length === 0 ? `WHERE ` : `AND `;
+    queryString += queryParams.length === 0 ? `WHERE ` : `AND `;
     queryParams.push(options.maximum_price_per_night * 100);
     queryString += `properties.cost_per_night <= $${queryParams.length} `;
   }
@@ -147,15 +147,13 @@ const getAllProperties = (options, limit = 10) => {
 exports.getAllProperties = getAllProperties;
 
 
-/**
- * Add a property to the database
- * @param {{}} property An object containing all of the property details.
- * @return {Promise<{}>} A promise to the property.
- */
-const addProperty = function(property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
-}
+const addPropertyQueryString = `
+  INSERT INTO properties (owner_id, title, description, thumbnail_photo_url, cover_photo_url, cost_per_night, street, city, province, post_code, country, parking_spaces, number_of_bathrooms, number_of_bedrooms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *
+`;
+const addProperty = (properties) => {
+
+  return pool
+    .query(addPropertyQueryString, [properties.owner_id, properties.title, properties.description, properties.thumbnail_photo_url, properties.cover_photo_url, properties. cost_per_night, properties.street, properties.city, properties.province, properties.post_code, properties.country, properties.parking_spaces, properties.number_of_bathrooms, properties.number_of_bedrooms])
+    .then(result => result.rows);
+};
 exports.addProperty = addProperty;
