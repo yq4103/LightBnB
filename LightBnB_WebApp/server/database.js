@@ -94,21 +94,55 @@ exports.getAllReservations = getAllReservations;
 
 /// Properties
 
-const propertiesQueryString = `
-  SELECT properties.*, avg(property_reviews.rating) as average_rating
-  FROM properties
-  JOIN property_reviews ON properties.id = property_id
-  GROUP BY properties.id
-  LIMIT $1
-`;
-
 const getAllProperties = (options, limit = 10) => {
-  return pool
-    .query(propertiesQueryString, [limit])
-    .then(result => result.rows)
-    .catch((err) => {
-      console.log(err.message);
-    });
+
+  const queryParams = [];
+  let queryString = `
+        SELECT properties.*, avg(property_reviews.rating) as average_rating
+        FROM properties
+        JOIN property_reviews ON properties.id = property_id
+        `;
+ 
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `WHERE city LIKE $${queryParams.length} `;
+  }
+ 
+  if (options.owner_id) {
+    queryString+= queryParams.length === 0 ? `WHERE ` : `AND `;
+    queryParams.push(`%${options.owner_id}%`);
+    queryString += `properties.owner_id = $${queryParams.length} `;
+  }
+
+  if (options.minimum_price_per_night) {
+    queryString+= queryParams.length === 0 ? `WHERE ` : `AND `;
+    queryParams.push(options.minimum_price_per_night * 100);
+    queryString += `properties.cost_per_night >= $${queryParams.length} `;
+  }
+
+  if (options.maximum_price_per_night) {
+    queryString+= queryParams.length === 0 ? `WHERE ` : `AND `;
+    queryParams.push(options.maximum_price_per_night * 100);
+    queryString += `properties.cost_per_night <= $${queryParams.length} `;
+  }
+
+  queryString += `
+  GROUP BY properties.id 
+  `;
+
+  if (options.minimum_rating) {
+    queryParams.push(parseInt(options.minimum_rating));
+    queryString += `HAVING AVG(property_reviews.rating) >= $${queryParams.length}`;
+  }
+ 
+  queryParams.push(limit);
+  queryString += ` 
+   ORDER BY cost_per_night
+   LIMIT $${queryParams.length};
+   `;
+   
+  return pool.query(queryString, queryParams).then((res) => res.rows).catch((err) => err.message);
+
 };
 exports.getAllProperties = getAllProperties;
 
